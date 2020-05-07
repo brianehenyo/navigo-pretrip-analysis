@@ -1,0 +1,49 @@
+---
+title: "Study 3 - Pairwise Comparisons"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data("trdel")
+objnames <- c("CO", "TV", "PA", "AU", "CL")
+mod.tr.ltype <- llbtPC.fit(trdel, nitems = 5, obj.names = objnames, 
+                           formel = ~ ltype, elim = ~ ltype)
+mod.tr.ltype
+```
+
+```{r}
+w <- llbt.worth(mod.tr.ltype)
+plot(w, log = "y")
+```
+
+```{r}
+mod.tr <- llbtPC.fit(trdel, nitems = 5, obj.names = objnames)
+mod.tr
+```
+
+```{r}
+w <- llbt.worth(mod.tr)
+plot(w, log = "y")
+```
+
+```{r}
+pc.data <- read_csv(file.path("pc-data.csv"))
+pc.data
+```
+
+```{r}
+conditions <- c("CP", "VP", "FP", "CR", "VR", "FR", "BL")
+mod.pc.data <- llbtPC.fit(pc.data, nitems = 7, obj.names = conditions)
+mod.pc.data
+```
+
+```{r}
+w <- llbt.worth(mod.pc.data)
+colnames(w) <- c("Overall")
+plot(w, log = "y", ylab = "Estimated Worth")
+```
+

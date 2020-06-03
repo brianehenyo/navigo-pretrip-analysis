@@ -33,17 +33,767 @@ plot(w, log = "y")
 ```{r}
 pc.data <- read_csv(file.path("pc-data.csv"))
 pc.data
+
+condition.colors <- c('#1f78b4', '#33a02c', '#e31a1c', '#a6cee3', '#b2df8a', '#fb9a99', '#fdbf6f')
+condition.shapes <- c(22, 21, 24, 15, 16, 17, 23)
+```
+
+
+```{r}
+1-pchisq(12.23704,45)
+
+summary(mod.pc.data)
+
+w <- llbt.worth(mod.pc.data)
+colnames(w) <- c("Neither", "Auto↓", "Auto↑")
+plot(w, log = "y", ylab = "Estimated Worth")
 ```
 
 ```{r}
 conditions <- c("CP", "VP", "FP", "CR", "VR", "FR", "BL")
-mod.pc.data <- llbtPC.fit(pc.data, nitems = 7, obj.names = conditions)
-mod.pc.data
+mod.pc.data.all <- llbtPC.fit(pc.data, nitems = 7, obj.names = conditions)
+mod.pc.data.all
+
+summary(mod.pc.data.all)
 ```
 
 ```{r}
-w <- llbt.worth(mod.pc.data)
-colnames(w) <- c("Overall")
-plot(w, log = "y", ylab = "Estimated Worth")
+w.all <- llbt.worth(mod.pc.data.all)
+colnames(w.all) <- c("Overall")
+plot(w.all, log = "y", ylab = "Estimated Worth")
+
+df.all <- tibble(condition = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))
+df.all <- cbind(df.all, as_tibble(w.all))
+
+df.all %>% 
+  mutate(condition = factor(condition, levels = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))) %>% 
+  melt(id.vars = "condition", measure.vars = c("Overall")) %>% 
+  ggplot(aes(x = variable, y = value, label = condition)) +
+    geom_point(aes(shape = condition, colour = condition), size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(direction = "y",
+                    nudge_x = -0.05,
+                    hjust = 1,
+                    segment.colour = "grey50",
+                    segment.alpha = 0.8,
+                    segment.size = 0.25) +
+    labs(x = "",
+         y = "Worth Estimate") +
+    # scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial")
+
+ggsave("output/llbt_overall.png", width=3, height=4)
 ```
+
+## Model with GCOS Autonomy
+
+```{r}
+conditions <- c("CP", "VP", "FP", "CR", "VR", "FR", "BL")
+pc.data.auto <- pc.data %>% 
+  filter(gcos.auto > 1) %>% 
+  mutate(gcos.auto = case_when(gcos.auto == 2 ~ 1,
+                               gcos.auto == 3 ~ 2))
+mod.pc.data.auto <- llbtPC.fit(pc.data.auto, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.auto, elim = ~ gcos.auto)
+mod.pc.data.auto
+summary(mod.pc.data.auto)
+```
+
+### Model with GCOS Control
+
+```{r}
+pc.data.cont <- pc.data %>% 
+  filter(gcos.cont > 1) %>% 
+  mutate(gcos.cont = case_when(gcos.cont == 2 ~ 1,
+                               gcos.cont == 3 ~ 2))
+mod.pc.data.cont <- llbtPC.fit(pc.data.cont, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.cont, elim = ~ gcos.cont)
+mod.pc.data.cont
+summary(mod.pc.data.cont)
+```
+
+### Model with GCOS Impersonal
+
+```{r}
+pc.data.impe <- pc.data %>% 
+  filter(gcos.impe > 1) %>% 
+  mutate(gcos.impe = case_when(gcos.impe == 2 ~ 1,
+                               gcos.impe == 3 ~ 2))
+mod.pc.data.impe <- llbtPC.fit(pc.data.impe, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.impe, elim = ~ gcos.impe)
+mod.pc.data.impe
+summary(mod.pc.data.impe)
+```
+
+
+```{r}
+w.auto <- llbt.worth(mod.pc.data.auto)
+w.cont <- llbt.worth(mod.pc.data.cont)
+w.impe <- llbt.worth(mod.pc.data.impe)
+colnames(w.auto) <- c("Autonomy↓ (n=5)", "Autonomy↑ (n=7)")
+# plot(w.auto, log = "y", ylab = "Estimated Worth")
+
+colnames(w.cont) <- c("Control↓ (n=6)", "Control↑ (n=6)")
+# plot(w.cont, log = "y", ylab = "Estimated Worth")
+
+colnames(w.impe) <- c("Impersonal↓ (n=5)", "Impersonal↑ (n=7)")
+# plot(w.impe, log = "y", ylab = "Estimated Worth")
+
+df.consolidated <- tibble(condition = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))
+df.auto <- as_tibble(w.auto) 
+df.cont <- as_tibble(w.cont) 
+df.impe <- as_tibble(w.impe) 
+df.consolidated <- cbind(df.consolidated, df.auto)
+df.consolidated <- cbind(df.consolidated, df.cont)
+df.consolidated <- cbind(df.consolidated, df.impe)
+
+df.consolidated.gcos.long <- df.consolidated %>% 
+  mutate(condition = factor(condition, levels = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))) %>% 
+  melt(id.vars = "condition", measure.vars = c("Autonomy↓ (n=5)", "Autonomy↑ (n=7)", "Control↓ (n=6)", "Control↑ (n=6)", "Impersonal↓ (n=5)", "Impersonal↑ (n=7)")) %>%
+  mutate(dimension = case_when(grepl("Autonomy", variable) ~ "Autonomy",
+         grepl("Control", variable) ~ "Control",
+         grepl("Impersonal", variable) ~ "Impersonal")) %>% 
+  mutate(variable = case_when(variable == "Autonomy↓ (n=5)" ~ "Low\n(n=5)",
+                              variable == "Autonomy↑ (n=7)" ~ "High\n(n=7)",
+                              variable == "Control↓ (n=6)" ~ "Low\n(n=6)",
+                              variable == "Control↑ (n=6)" ~ "High\n(n=6)",
+                              variable == "Impersonal↓ (n=5)" ~ "Low\n(n=5)",
+                              variable == "Impersonal↑ (n=7)" ~ "High\n(n=7)"))
+  # mutate(variable = factor(variable, levels = c("Low Autonomy\n(n=5)", 
+  #                                               "High Autonomy\n(n=7)",
+  #                                               "Low Control\n(n=6)",
+  #                                               "High Control\n(n=6)",
+  #                                               "Low Impersonal\n(n=5)",
+  #                                               "High Impersonal\n(n=7)"))) %>% 
+
+df.consolidated.gcos.labelled <- df.consolidated.gcos.long %>% 
+  filter(variable %in% c("Low\n(n=5)", "Low\n(n=6)"))
+
+p.auto <- df.consolidated.gcos.long %>% 
+  filter(dimension == "Autonomy") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=5)", 
+                                                "High\n(n=7)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.gcos.labelled, dimension == "Autonomy"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Autonomy") +
+    labs(x = "",
+         y = "Worth Estimate") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+p.cont <- df.consolidated.gcos.long %>% 
+  filter(dimension == "Control") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=6)", 
+                                                "High\n(n=6)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.gcos.labelled, dimension == "Control"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Control") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.impe <- df.consolidated.gcos.long %>% 
+  filter(dimension == "Impersonal") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=5)", 
+                                                "High\n(n=7)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.gcos.labelled, dimension == "Impersonal"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Impersonal") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.auto + p.cont + p.impe
+
+ggsave("output/llbt_gcos.png", width=8, height=5)
+```
+
+### MVS Intrinsic
+
+```{r}
+pc.data.intrinsic <- pc.data %>% 
+  filter(mvs.intrinsic > 1) %>% 
+  mutate(mvs.intrinsic = case_when(mvs.intrinsic == 2 ~ 1,
+                               mvs.intrinsic == 3 ~ 2))
+mod.pc.data.intrinsic <- llbtPC.fit(pc.data.intrinsic, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.intrinsic, elim = ~ mvs.intrinsic)
+mod.pc.data.intrinsic
+summary(mod.pc.data.intrinsic)
+```
+
+### MVS Integrated
+
+```{r}
+pc.data.integrated <- pc.data %>% 
+  filter(mvs.integrated > 1) %>% 
+  mutate(mvs.integrated = case_when(mvs.integrated == 2 ~ 1,
+                               mvs.integrated == 3 ~ 2))
+mod.pc.data.integrated <- llbtPC.fit(pc.data.integrated, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.integrated, elim = ~ mvs.integrated)
+mod.pc.data.integrated
+summary(mod.pc.data.integrated)
+```
+
+### MVS Identified
+
+```{r}
+pc.data.identified <- pc.data %>% 
+  filter(mvs.identified > 1) %>% 
+  mutate(mvs.identified = case_when(mvs.identified == 2 ~ 1,
+                               mvs.identified == 3 ~ 2))
+mod.pc.data.identified <- llbtPC.fit(pc.data.identified, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.identified, elim = ~ mvs.identified)
+mod.pc.data.identified
+summary(mod.pc.data.identified)
+```
+
+### MVS Introjected
+
+```{r}
+pc.data.introjected <- pc.data %>% 
+  filter(mvs.introjected > 1) %>% 
+  mutate(mvs.introjected = case_when(mvs.introjected == 2 ~ 1,
+                               mvs.introjected == 3 ~ 2))
+mod.pc.data.introjected <- llbtPC.fit(pc.data.introjected, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.introjected, elim = ~ mvs.introjected)
+mod.pc.data.introjected
+summary(mod.pc.data.introjected)
+```
+
+### MVS External
+
+```{r}
+pc.data.external <- pc.data %>% 
+  filter(mvs.external > 1) %>% 
+  mutate(mvs.external = case_when(mvs.external == 2 ~ 1,
+                               mvs.external == 3 ~ 2))
+mod.pc.data.external <- llbtPC.fit(pc.data.external, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.external, elim = ~ mvs.external)
+mod.pc.data.external
+summary(mod.pc.data.external)
+1-pchisq(37.853, 30)
+```
+
+### MVS Amotivation
+
+```{r}
+pc.data.amotivation <- pc.data %>% 
+  filter(mvs.amotivation > 1) %>% 
+  mutate(mvs.amotivation = case_when(mvs.amotivation == 2 ~ 1,
+                               mvs.amotivation == 3 ~ 2))
+mod.pc.data.amotivation <- llbtPC.fit(pc.data.amotivation, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.amotivation, elim = ~ mvs.amotivation)
+mod.pc.data.amotivation
+summary(mod.pc.data.amotivation)
+```
+
+```{r}
+w.intrinsic <- llbt.worth(mod.pc.data.intrinsic)
+w.integrated <- llbt.worth(mod.pc.data.integrated)
+w.identified <- llbt.worth(mod.pc.data.identified)
+w.introjected <- llbt.worth(mod.pc.data.introjected)
+w.external <- llbt.worth(mod.pc.data.external)
+w.amotivation <- llbt.worth(mod.pc.data.amotivation)
+colnames(w.intrinsic) <- c("Intrinsic↓ (n=4)", "Intrinsic↑ (n=4)")
+colnames(w.integrated) <- c("Integrated↓ (n=4)", "Integrated↑ (n=6)")
+colnames(w.identified) <- c("Identified↓ (n=4)", "Identified↑ (n=5)")
+colnames(w.introjected) <- c("Introjected↓ (n=3)", "Introjected↑ (n=7)")
+colnames(w.external) <- c("External↓ (n=3)", "External↑ (n=8)")
+colnames(w.amotivation) <- c("Amotivation↓ (n=4)", "Amotivation↑ (n=7)")
+
+df.consolidated.mvs <- tibble(condition = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.intrinsic))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.integrated))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.identified))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.introjected))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.external))
+df.consolidated.mvs <- cbind(df.consolidated.mvs, as_tibble(w.amotivation))
+
+df.consolidated.mvs.long <- df.consolidated.mvs %>% 
+  mutate(condition = factor(condition, levels = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))) %>% 
+  melt(id.vars = "condition", measure.vars = c("Intrinsic↓ (n=4)", "Intrinsic↑ (n=4)", "Integrated↓ (n=4)", "Integrated↑ (n=6)", "Identified↓ (n=4)", "Identified↑ (n=5)", "Introjected↓ (n=3)", "Introjected↑ (n=7)", "External↓ (n=3)", "External↑ (n=8)", "Amotivation↓ (n=4)", "Amotivation↑ (n=7)")) %>%
+  mutate(dimension = case_when(grepl("Intrinsic", variable) ~ "Intrinsic",
+         grepl("Integrated", variable) ~ "Integrated",
+         grepl("Identified", variable) ~ "Identified",
+         grepl("Introjected", variable) ~ "Introjected",
+         grepl("External", variable) ~ "External",
+         grepl("Amotivation", variable) ~ "Amotivation")) %>% 
+  mutate(variable = case_when(variable == "Intrinsic↓ (n=4)" ~ "Low\n(n=4)",
+                              variable == "Intrinsic↑ (n=4)" ~ "High\n(n=4)",
+                              variable == "Integrated↓ (n=4)" ~ "Low\n(n=4)",
+                              variable == "Integrated↑ (n=6)" ~ "High\n(n=6)",
+                              variable == "Identified↓ (n=4)" ~ "Low\n(n=4)",
+                              variable == "Identified↑ (n=5)" ~ "High\n(n=5)",
+                              variable == "Introjected↓ (n=3)" ~ "Low\n(n=3)",
+                              variable == "Introjected↑ (n=7)" ~ "High\n(n=7)",
+                              variable == "External↓ (n=3)" ~ "Low\n(n=3)",
+                              variable == "External↑ (n=8)" ~ "High\n(n=8)",
+                              variable == "Amotivation↓ (n=4)" ~ "Low\n(n=4)",
+                              variable == "Amotivation↑ (n=7)" ~ "High\n(n=7)"))
+
+df.consolidated.mvs.labelled <- df.consolidated.mvs.long %>% 
+  filter(variable %in% c("Low\n(n=4)", "Low\n(n=3)"))
+
+p.intrinsic <- df.consolidated.mvs.long %>% 
+  filter(dimension == "Intrinsic") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=4)", 
+                                                "High\n(n=4)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "Intrinsic"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Intrinsic") +
+    labs(x = "",
+         y = "Worth Estimate") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial") +
+    theme(plot.title = element_text(hjust = 0.5))
+
+p.integrated <- df.consolidated.mvs.long %>% 
+  filter(dimension == "Integrated") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=4)", 
+                                                "High\n(n=6)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "Integrated"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Integrated") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.identified <- df.consolidated.mvs.long %>% 
+  filter(dimension == "Identified") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=4)", 
+                                                "High\n(n=5)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "Identified"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Identified") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.introjected <- df.consolidated.mvs.long %>% 
+  filter(dimension == "Introjected") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=3)", 
+                                                "High\n(n=7)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "Introjected"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Introjected") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+p.external <- df.consolidated.mvs.long %>% 
+  filter(dimension == "External") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=3)", 
+                                                "High\n(n=8)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "External"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("External") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.amotivation <- df.consolidated.mvs.long %>% 
+  filter(dimension == "Amotivation") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=4)", 
+                                                "High\n(n=7)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.consolidated.mvs.labelled, dimension == "Amotivation"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Amotivation") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.45, by = 0.05), limits = c(0, 0.45)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.intrinsic + p.integrated + p.identified + p.introjected + p.external + p.amotivation
+
+ggsave("output/llbt_mvs.png", width=12, height=8)
+```
+
+# Paired Comparison with High/Low Covariants
+
+```{r}
+pc.data.hl <- read_csv(file.path("pc-highlow.csv"))
+pc.data.hl
+```
+
+## LLBT with GCOS Autonomous Covariate
+
+```{r}
+pc.data.hl.auto <- pc.data.hl %>% 
+  mutate(gcos.auto = case_when(gcos.auto == 1 ~ 1,
+                               gcos.auto == 3 ~ 2))
+mod.pc.data.hl.auto <- llbtPC.fit(pc.data.hl.auto, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.auto, elim = ~ gcos.auto)
+mod.pc.data.hl.auto
+summary(mod.pc.data.hl.auto)
+1-pchisq(21.824, 30)
+```
+
+## LLBT with GCOS Controlled Covariate
+
+```{r}
+pc.data.hl.cont <- pc.data.hl %>% 
+  mutate(gcos.cont = case_when(gcos.cont == 1 ~ 1,
+                               gcos.cont == 3 ~ 2))
+mod.pc.data.hl.cont <- llbtPC.fit(pc.data.hl.cont, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.cont, elim = ~ gcos.cont)
+mod.pc.data.hl.cont
+summary(mod.pc.data.hl.cont)
+1-pchisq(13.905, 30)
+```
+
+## LLBT with GCOS Impersonal Covariate
+
+```{r}
+mod.pc.data.hl.impe <- llbtPC.fit(pc.data.hl, nitems = 7, obj.names = conditions,
+                           formel = ~ gcos.impe, elim = ~ gcos.impe)
+mod.pc.data.hl.impe
+summary(mod.pc.data.hl.impe)
+1-pchisq(16.594, 45)
+```
+
+## Viz
+
+```{r}
+w.hl.auto <- llbt.worth(mod.pc.data.hl.auto)
+w.hl.cont <- llbt.worth(mod.pc.data.hl.cont)
+w.hl.impe <- llbt.worth(mod.pc.data.hl.impe)
+colnames(w.hl.auto) <- c("Moderate Autonomy", "High Autonomy")
+colnames(w.hl.cont) <- c("Moderate Controlled", "High Controlled")
+colnames(w.hl.impe) <- c("Moderate Impersonal", "Low Impersonal", "High Impersonal")
+
+df.hl.consolidated <- tibble(condition = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))
+df.hl.auto <- as_tibble(w.hl.auto)
+df.hl.cont <- as_tibble(w.hl.cont)
+df.hl.impe <- as_tibble(w.hl.impe) 
+df.hl.consolidated <- cbind(df.hl.consolidated, df.hl.auto)
+df.hl.consolidated <- cbind(df.hl.consolidated, df.hl.cont)
+df.hl.consolidated <- cbind(df.hl.consolidated, df.hl.impe)
+
+df.hl.consolidated.gcos.long <- df.hl.consolidated %>% 
+  mutate(condition = factor(condition, levels = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))) %>% 
+  melt(id.vars = "condition", measure.vars = c("Moderate Autonomy", "High Autonomy", "Moderate Controlled", "High Controlled", "Moderate Impersonal", "Low Impersonal", "High Impersonal")) %>%
+  mutate(dimension = case_when(grepl("Autonomy", variable) ~ "Autonomy",
+         grepl("Control", variable) ~ "Control",
+         grepl("Impersonal", variable) ~ "Impersonal")) %>% 
+  mutate(variable = case_when(variable == "Moderate Autonomy" ~ "Moderate\n(n=2)",
+                              variable == "High Autonomy" ~ "High\n(n=18)",
+                              variable == "Moderate Controlled" ~ "Moderate\n(n=19)",
+                              variable == "High Controlled" ~ "High\n(n=1)",
+                              variable == "Moderate Impersonal" ~ "Moderate\n(n=14)",
+                              variable == "Low Impersonal" ~ "Low\n(n=5)",
+                              variable == "High Impersonal" ~ "High\n(n=1)"))
+
+df.hl.consolidated.gcos.labelled <- df.hl.consolidated.gcos.long %>% 
+  filter(variable %in% c("Moderate\n(n=2)", "Moderate\n(n=19)", "Low\n(n=5)"))
+
+p.hl.auto <- df.hl.consolidated.gcos.long %>% 
+  filter(dimension == "Autonomy") %>% 
+  mutate(variable = factor(variable, levels = c("Moderate\n(n=2)", 
+                                                "High\n(n=18)"))) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.hl.consolidated.gcos.labelled, dimension == "Autonomy"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Autonomy") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(plot.title = element_text(hjust = 0.5))
+
+p.hl.cont <- df.hl.consolidated.gcos.long %>% 
+  filter(dimension == "Control") %>% 
+  mutate(variable = factor(variable, levels = c("Moderate\n(n=19)", 
+                                                "High\n(n=1)"))) %>% 
+  filter(variable == "Moderate\n(n=19)") %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.hl.consolidated.gcos.labelled, dimension == "Control"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Control") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.hl.impe <- df.hl.consolidated.gcos.long %>% 
+  filter(dimension == "Impersonal") %>% 
+  mutate(variable = factor(variable, levels = c("Low\n(n=5)",
+                                                "Moderate\n(n=14)",
+                                                "High\n(n=1)"))) %>% 
+  filter(variable %in% c("Moderate\n(n=14)", "Low\n(n=5)")) %>% 
+  ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
+    geom_line(color="grey50", size=0.75, alpha = 0.8) +
+    geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
+    scale_shape_manual(values=condition.shapes, guide = FALSE) +
+    scale_colour_manual(values=condition.colors, guide = FALSE) +
+    geom_text_repel(
+      data = subset(df.hl.consolidated.gcos.labelled, dimension == "Impersonal"),
+      force = 2,
+      hjust = 1,
+      direction = "y",
+      point.padding = 0.1,
+      box.padding = 0.25,
+      nudge_x      = -0.2,
+      segment.colour = "grey50",
+      segment.alpha = 0.8,
+      segment.size = 0.25) +
+    ggtitle("Impersonal") +
+    labs(x = "",
+         y = "") +
+    scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
+    theme_tufte(base_family = "Arial", ticks = FALSE) +
+    theme(axis.text.y = element_blank(),
+          plot.title = element_text(hjust = 0.5))
+
+p.hl.auto + p.hl.cont + p.hl.impe
+
+ggsave("output/llbt_gcos_hl.png", width=8, height=5)
+```
+
+## LLBT with MVS Intrinsic Covariate
+
+```{r}
+mod.pc.data.hl.intrinsic <- llbtPC.fit(pc.data.hl, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.intrinsic, elim = ~ mvs.intrinsic)
+mod.pc.data.hl.intrinsic
+summary(mod.pc.data.hl.intrinsic)
+1-pchisq(26.526, 45)
+```
+
+## LLBT with MVS Integrated Covariate
+
+```{r}
+mod.pc.data.hl.integrated <- llbtPC.fit(pc.data.hl, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.integrated, elim = ~ mvs.integrated)
+mod.pc.data.hl.integrated
+summary(mod.pc.data.hl.integrated)
+1-pchisq(25.395, 45)
+```
+
+## LLBT with MVS Identified Covariate
+
+```{r}
+pc.data.hl.identified <- pc.data.hl %>% 
+  mutate(mvs.identified = case_when(mvs.identified == 2 ~ 1,
+                               mvs.identified == 3 ~ 2))
+mod.pc.data.hl.identified <- llbtPC.fit(pc.data.hl.identified, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.identified, elim = ~ mvs.identified)
+mod.pc.data.hl.identified
+summary(mod.pc.data.hl.identified)
+1-pchisq(18.939, 30)
+```
+
+## LLBT with MVS Introjected Covariate
+
+```{r}
+mod.pc.data.hl.introjected <- llbtPC.fit(pc.data.hl, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.introjected, elim = ~ mvs.introjected)
+mod.pc.data.hl.introjected
+summary(mod.pc.data.hl.introjected)
+1-pchisq(17.387, 45)
+```
+
+## LLBT with MVS External Covariate
+
+```{r}
+pc.data.hl.external <- pc.data.hl %>% 
+  mutate(mvs.external = case_when(mvs.external == 2 ~ 1,
+                               mvs.external == 3 ~ 2))
+mod.pc.data.hl.external <- llbtPC.fit(pc.data.hl.external, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.external, elim = ~ mvs.external)
+mod.pc.data.hl.external
+summary(mod.pc.data.hl.external)
+1-pchisq(23.217, 30)
+```
+
+## LLBT with MVS Amotivation Covariate
+
+```{r}
+mod.pc.data.hl.amotivation <- llbtPC.fit(pc.data.hl, nitems = 7, obj.names = conditions,
+                           formel = ~ mvs.amotivation, elim = ~ mvs.amotivation)
+mod.pc.data.hl.amotivation
+summary(mod.pc.data.hl.amotivation)
+1-pchisq(17.353, 45)
+```
+
+
+
+
+
+
+
 

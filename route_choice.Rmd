@@ -1,0 +1,84 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+data(ohio)
+data(dietox)
+ohio
+respiratory
+dietox
+
+summary(ohio)
+
+respiratory$sex <- as.factor(respiratory$sex)
+respiratory$treat <- as.factor(respiratory$treat)
+
+fit.ohio <- geeglm(resp~age+smoke, family=binomial(link="logit"), data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
+summary(fit.ohio)
+QIC(fit.ohio)
+
+fit1 <- geeglm(resp~factor(age)+smoke, family=binomial(link="logit"), data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
+fit2 <- geeglm(resp~factor(age), family=binomial(link="logit"), data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
+anova(fit1, fit2)
+
+esticon(fit.ohio, c(0,-1,1,0,1))
+exp(.Last.value$Estimate)
+
+
+m.ex <- geeglm(outcome ~ baseline + center + sex + treat + age + I(age^2) + treat*age, 
+               data = respiratory, 
+               id = interaction(center, id), 
+               family = binomial, 
+               corstr = "exchangeable")
+summary(m.ex)
+```
+
+```{r}
+rc.data <- read_csv(file.path("routechoice-data.csv"))
+rc.data <- rc.data %>% 
+  filter(info %in% c("C", "V", "F")) %>% 
+  mutate(gender = factor(gender, levels = c("Male", "Female", "Non-binary"))) %>% 
+  mutate(switch.h2w = factor(switch.h2w, levels = c("Once a week", "Twice a week or more", "Never"))) %>% 
+  mutate(switch.w2h = factor(switch.w2h, levels = c("Once a week", "Twice a week or more", "Never"))) %>% 
+  mutate(triptype = factor(triptype, levels = c("W2H", "H2W", "W2F", "H2F"))) %>% 
+  mutate(info = factor(info, levels = c("C", "V", "F"))) %>% 
+  mutate(familiarity = factor(familiarity, levels = c("P", "R"))) %>% 
+  mutate(choice = choice-1)
+```
+
+```{r}
+fit.glm <- glm(choice ~ triptype + info + familiarity + triptype*info*familiarity,
+                   family = binomial(link="logit"),
+                   data = rc.data)
+fit.exch <- geeglm(choice ~ triptype + info + familiarity + triptype*info*familiarity,
+                   family = binomial(link="logit"),
+                   data = rc.data,
+                   id = id,
+                   corstr = "exchangeable",
+                   std.err = "san.se")
+fit.ind <- geeglm(choice ~ triptype + info + familiarity + triptype*info*familiarity,
+                   family = binomial(link="logit"),
+                   data = rc.data,
+                   id = id,
+                   corstr = "independence",
+                   std.err = "san.se")
+
+summary(fit.exch)
+summary(fit.ind)
+
+QIC(fit.exch)
+
+
+# coef(summary(fit.exch))
+# fit.exch$geese$vbeta
+```
+
+
+
+

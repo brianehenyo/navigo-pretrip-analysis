@@ -23,13 +23,36 @@ fit.ohio <- geeglm(resp~age+smoke, family=binomial(link="logit"), data=ohio, id=
 summary(fit.ohio)
 QIC(fit.ohio)
 
+fit.agecat <- geeglm(resp~factor(age)+smoke, family=binomial(link="logit"),
+data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
+summary(fit.agecat)
+
+est <- esticon(fit.agecat, diag(5))
+est
+
+OR.CI <- exp(cbind(est$estimate, est$lwr, est$upr))
+rownames(OR.CI) <- names(coef(fit.agecat))
+colnames(OR.CI) <- c("OR", "Lower OR", "Upper OR")
+OR.CI
+
 fit1 <- geeglm(resp~factor(age)+smoke, family=binomial(link="logit"), data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
 fit2 <- geeglm(resp~factor(age), family=binomial(link="logit"), data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
 anova(fit1, fit2)
 
-esticon(fit.ohio, c(0,-1,1,0,1))
-exp(.Last.value$Estimate)
+# Odds ratio of wheezing for a 9-year old with a mother who smoked
+# during the first year of the study compared to an 8-year old with a
+# mother who did not smoke during the first year of the study
+est.nineVeight <- esticon(fit.agecat, c(0,-1,1,0,1))
+exp(est.nineVeight$estimate)
 
+exp(coef(fit.ohio))
+
+fit.ohio <- geeglm(resp~factor(age)*smoke, family=binomial(link="logit"),
+data=ohio, id=id, corstr = "exchangeable", std.err="san.se")
+summary(fit.ohio)
+
+L = cbind(matrix(0, nrow=3, ncol=5), diag(3))
+est.joint <- esticon(fit.ohio, L, joint.test=TRUE)
 
 m.ex <- geeglm(outcome ~ baseline + center + sex + treat + age + I(age^2) + treat*age, 
                data = respiratory, 
@@ -69,11 +92,21 @@ fit.ind <- geeglm(choice ~ triptype + info + familiarity + triptype*info*familia
                    corstr = "independence",
                    std.err = "san.se")
 
+summary(fit.glm)
 summary(fit.exch)
 summary(fit.ind)
 
+est.rc.exch <- esticon(fit.exch, diag(24))
+est.rc.exch
+
+OR.CI.rc.exch <- exp(cbind(est.rc.exch$estimate, est.rc.exch$lwr, est.rc.exch$upr))
+rownames(OR.CI.rc.exch) <- names(coef(fit.exch))
+colnames(OR.CI.rc.exch) <- c("OR", "Lower OR", "Upper OR")
+OR.CI.rc.exch
+
 QIC(fit.exch)
 
+exp(coef(fit.exch))
 
 # coef(summary(fit.exch))
 # fit.exch$geese$vbeta

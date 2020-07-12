@@ -552,6 +552,112 @@ pc.data.hl <- read_csv(file.path("pc-highlow.csv"))
 pc.data.hl
 ```
 
+## Data Skewness
+
+```{r}
+skewness(pc.data.hl$raw.gcos.auto)
+skewness(pc.data.hl$raw.gcos.cont)
+skewness(pc.data.hl$raw.gcos.impe)
+skewness(pc.data.hl$raw.mvs.intrinsic)
+skewness(pc.data.hl$raw.mvs.integrated)
+skewness(pc.data.hl$raw.mvs.identified)
+skewness(pc.data.hl$raw.mvs.introjected)
+skewness(pc.data.hl$raw.mvs.external)
+skewness(pc.data.hl$raw.mvs.amotivation)
+```
+
+## Parametric Tests
+
+MVS Intrinsic subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.intrinsic, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.intrinsic), sd=sd(pc.data.hl$raw.mvs.intrinsic)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.intrinsic)
+shapiro.test(pc.data.hl$raw.mvs.intrinsic)
+```
+MVS Integrated subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.integrated, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.integrated), sd=sd(pc.data.hl$raw.mvs.integrated)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.integrated)
+shapiro.test(pc.data.hl$raw.mvs.integrated)
+```
+
+MVS Identified subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.identified, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.identified), sd=sd(pc.data.hl$raw.mvs.identified)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.identified)
+shapiro.test(pc.data.hl$raw.mvs.identified)
+```
+
+MVS Introjected subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.introjected, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.introjected), sd=sd(pc.data.hl$raw.mvs.introjected)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.introjected)
+shapiro.test(pc.data.hl$raw.mvs.introjected)
+```
+
+MVS External subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.external, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.external), sd=sd(pc.data.hl$raw.mvs.external)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.external)
+shapiro.test(pc.data.hl$raw.mvs.external)
+```
+
+MVS Amotivation subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.mvs.amotivation, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.mvs.amotivation), sd=sd(pc.data.hl$raw.mvs.amotivation)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.mvs.amotivation)
+shapiro.test(pc.data.hl$raw.mvs.amotivation)
+```
+
+GCOS Autonomous subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.gcos.auto, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.gcos.auto), sd=sd(pc.data.hl$raw.gcos.auto)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.gcos.auto)
+shapiro.test(pc.data.hl$raw.gcos.auto)
+```
+
+GCOS Controlled subscale scores are NOT normally distributed --> p-value is less than 0.05 thus the null hypothesis that it is normally distributed is rejected.
+
+```{r}
+hist(pc.data.hl$raw.gcos.cont, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.gcos.cont), sd=sd(pc.data.hl$raw.gcos.cont)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.gcos.cont)
+shapiro.test(pc.data.hl$raw.gcos.cont)
+```
+
+GCOS Impersonal subscale scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.gcos.impe, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.gcos.impe), sd=sd(pc.data.hl$raw.gcos.impe)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.gcos.impe)
+shapiro.test(pc.data.hl$raw.gcos.impe)
+```
+
+
 ## LLBT with GCOS Autonomous Covariate
 
 ```{r}

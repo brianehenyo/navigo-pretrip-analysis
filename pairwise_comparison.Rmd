@@ -657,6 +657,38 @@ stat.desc(pc.data.hl$raw.gcos.impe)
 shapiro.test(pc.data.hl$raw.gcos.impe)
 ```
 
+Autonomous motivation scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.auto.motivation, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.auto.motivation), sd=sd(pc.data.hl$raw.auto.motivation)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.auto.motivation)
+shapiro.test(pc.data.hl$raw.auto.motivation)
+```
+
+Controlled motivation scores are normally distributed --> p-value is greater than 0.05 thus the null hypothesis that it is normally distributed is NOT rejected.
+
+```{r}
+hist(pc.data.hl$raw.cont.motivation, col="red", xlim=c(1,7), prob=TRUE)
+x <- seq(1,7,0.1)
+curve(dnorm(x,mean=mean(pc.data.hl$raw.cont.motivation), sd=sd(pc.data.hl$raw.cont.motivation)), 1, 7, col="blue", add=TRUE)
+stat.desc(pc.data.hl$raw.cont.motivation)
+shapiro.test(pc.data.hl$raw.cont.motivation)
+```
+
+## Correlation of SDT constructs
+
+```{r}
+pc.data.hl.raw <- pc.data.hl %>% 
+  select(raw.gcos.auto, raw.gcos.cont, raw.gcos.impe, raw.mvs.intrinsic, raw.mvs.integrated, raw.mvs.identified, raw.mvs.introjected, raw.mvs.external, raw.mvs.amotivation)
+
+sdt.corr <- rcorr(as.matrix(pc.data.hl.raw))
+sdt.corr
+```
+
+
+
 
 ## LLBT with GCOS Autonomous Covariate
 
@@ -751,7 +783,7 @@ p.hl.auto <- df.hl.consolidated.gcos.long %>%
       segment.size = 0.25) +
     ggtitle("Autonomy") +
     labs(x = "",
-         y = "") +
+         y = "Worth Estimate") +
     scale_y_continuous(breaks = seq(0, 0.35, by = 0.05), limits = c(0, 0.35)) +
     theme_tufte(base_family = "Arial", ticks = FALSE) +
     theme(plot.title = element_text(hjust = 0.5))
@@ -874,7 +906,7 @@ p.hl.automotiv <- df.hl.consolidated.motiv.long %>%
   mutate(variable = factor(variable, levels = c("Moderate\n(n=2)",
                                                 "High\n(n=24)",
                                                 "Low\n(n=2)"))) %>% 
-  filter(variable %in% c("Moderate\n(n=2)", "High\n(n=24)")) %>% 
+  filter(variable %in% c("Moderate\n(n=2)", "High\n(n=24)")) %>%
   ggplot(aes(x = variable, y = value, label = condition, shape = condition, group = condition)) +
     geom_line(color="grey50", size=0.75, alpha = 0.8) +
     geom_point(aes(colour = condition), fill = "white", size = 3, stroke = 1.25) +
@@ -893,7 +925,7 @@ p.hl.automotiv <- df.hl.consolidated.motiv.long %>%
       segment.size = 0.25) +
     ggtitle("Autonomous Motivation") +
     labs(x = "",
-         y = "") +
+         y = "Worth Estimate") +
     scale_y_continuous(breaks = seq(0, 0.5, by = 0.05), limits = c(0, 0.5)) +
     theme_tufte(base_family = "Arial", ticks = FALSE) +
     theme(plot.title = element_text(hjust = 0.5))
@@ -1163,7 +1195,7 @@ p.hl.introjected <- df.hl.consolidated.mvs.long %>%
       segment.size = 0.25) +
     ggtitle("Introjected") +
     labs(x = "",
-         y = "") +
+         y = "Worth Estimate") +
     scale_y_continuous(breaks = seq(0, 0.4, by = 0.05), limits = c(0, 0.4)) +
     theme_tufte(base_family = "Arial", ticks = FALSE) +
     theme(plot.title = element_text(hjust = 0.5))
@@ -1231,6 +1263,24 @@ p.hl.intrinsic + p.hl.integrated + p.hl.identified + p.hl.introjected + p.hl.ext
 ggsave("output/llbt_mvs_hl.png", width=12, height=8)
 ```
 
+## Most Preferred Versions
+
+```{r}
+data.winners <- tibble(winner = c("FR","CP","CR","CR","VR","FR","VR","VP","FR","CP","CR","FP","FR","FR","CR","VR","BL","FR","FR","CR","VR","FR","FR","BL","CP","FR","CP","CR","CR","CP","VP","VP","FR","FR","VP","FP"))
+
+data.winners %>% 
+  mutate(winner = factor(winner, levels = c("CP", "VP", "FP", "CR", "VR", "FR", "BL"))) %>% 
+  ggplot(aes(winner)) +
+  geom_bar(aes(fill = winner)) + 
+  scale_fill_manual(values=condition.colors, guide = FALSE) +
+  labs(x = "",
+       y = "# of participants who preferred") +
+  scale_y_continuous(breaks = seq(0, 12, by = 2), limits = c(0, 12)) +
+  coord_flip() +
+  theme_tufte(base_family = "Arial", ticks = FALSE)
+
+ggsave("output/pc-winners.png", width=4, height=4)
+```
 
 
 
